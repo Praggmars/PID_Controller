@@ -1,10 +1,9 @@
 #pragma once
 
-#include "motor.h"
+#include "stepresponsegraph.h"
+#include "circularcontainer.h"
 #include <Windows.h>
 #include <iostream>
-#include <string>
-#include <vector>
 
 class Application
 {
@@ -16,6 +15,8 @@ class Application
 	HWND lbl_kd, tb_kd;
 	HWND lbl_friction, tb_friction;
 	HWND lbl_gravity, tb_gravity;
+	HWND lbl_outputLimit, tb_outputLimit;
+	HWND lbl_integralLimit, tb_integralLimit;
 	HWND btn_set;
 	HWND btn_restart;
 
@@ -33,8 +34,8 @@ class Application
 	double m_leverL;
 
 	Motor m_motor;
-	std::vector<double> m_graph;
-	int m_maxGraphDataCount;
+	CircularContainer<double, 640> m_graph;
+	StepResponseGraph m_stepResponseGraph;
 
 private:
 	void CreateUI();

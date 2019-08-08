@@ -24,12 +24,21 @@
     <ClCompile Include="motor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="stepresponsegraph.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="motor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="circularcontainer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stepresponsegraph.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

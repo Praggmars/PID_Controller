@@ -141,10 +141,13 @@
     <ClCompile Include="application.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="motor.cpp" />
+    <ClCompile Include="stepresponsegraph.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.h" />
+    <ClInclude Include="circularcontainer.h" />
     <ClInclude Include="motor.h" />
+    <ClInclude Include="stepresponsegraph.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

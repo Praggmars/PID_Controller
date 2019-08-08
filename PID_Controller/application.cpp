@@ -1,5 +1,6 @@
 #include "application.h"
 #include <CommCtrl.h>
+#include <string>
 
 #define BUTTONID_SET 200
 #define BUTTONID_RESTART 201
@@ -76,6 +77,14 @@ void Application::CreateUI()
 	tb_gravity = CreateWindowEx(0, WC_EDIT, TEXT("0.1"), ES_LEFT | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_TABSTOP, x2, y, w, h, m_hwnd, NULL, NULL, NULL);
 	y += h + padding;
 
+	lbl_outputLimit = CreateWindowEx(0, WC_STATIC, TEXT("Output limit"), SS_LEFT | WS_CHILD | WS_VISIBLE, x1, y, w, h, m_hwnd, NULL, NULL, NULL);
+	tb_outputLimit = CreateWindowEx(0, WC_EDIT, TEXT("10.0"), ES_LEFT | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_TABSTOP, x2, y, w, h, m_hwnd, NULL, NULL, NULL);
+	y += h + padding;
+
+	lbl_integralLimit = CreateWindowEx(0, WC_STATIC, TEXT("Integral limit"), SS_LEFT | WS_CHILD | WS_VISIBLE, x1, y, w, h, m_hwnd, NULL, NULL, NULL);
+	tb_integralLimit = CreateWindowEx(0, WC_EDIT, TEXT("20.0"), ES_LEFT | ES_AUTOHSCROLL | WS_CHILD | WS_VISIBLE | WS_TABSTOP, x2, y, w, h, m_hwnd, NULL, NULL, NULL);
+	y += h + padding;
+
 	btn_set = CreateWindowEx(0, WC_BUTTON, TEXT("Set"), BS_BOTTOM | WS_CHILD | WS_VISIBLE, x1, y, w, h, m_hwnd, (HMENU)BUTTONID_SET, NULL, NULL);
 	btn_restart = CreateWindowEx(0, WC_BUTTON, TEXT("Restart"), BS_BOTTOM | WS_CHILD | WS_VISIBLE, x2, y, w, h, m_hwnd, (HMENU)BUTTONID_RESTART, NULL, NULL);
 }
@@ -101,11 +110,13 @@ void Application::SetMotorParams()
 	double kd;
 	double friction;
 	double gravity;
+	double outputLimit;
+	double integralLimit;
 	TCHAR text[32];
 
 	GetWindowText(cb_controller, text, 32);
 	for (int i = 0; text[i]; i++)
-		controller[i] = text[i];
+		controller[i] = (char)text[i];
 
 	GetWindowText(tb_kp, text, 32);
 	kp = std::wcstod(text, NULL);
@@ -122,18 +133,27 @@ void Application::SetMotorParams()
 	GetWindowText(tb_gravity, text, 32);
 	gravity = std::wcstod(text, NULL);
 
-	m_motor.SetParams(controller, kp, ki, kd, friction, gravity);
+	GetWindowText(tb_outputLimit, text, 32);
+	outputLimit = std::wcstod(text, NULL);
+
+	GetWindowText(tb_integralLimit, text, 32);
+	integralLimit = std::wcstod(text, NULL);
+
+	m_motor.SetParams(controller, kp, ki, kd, friction, gravity, outputLimit, integralLimit);
+	m_stepResponseGraph.SetMotorParams(controller, kp, ki, kd, friction, gravity, outputLimit, integralLimit);
 }
 
 void Application::RestartMotor()
 {
-	m_graph.clear();
+	m_graph.Clear();
 	m_motor.Restart();
 }
 
 void Application::LMouseButtonDown(int x, int y)
 {
-	m_motor.setTargetPosition(std::atan2(x-m_circleX, y - m_circleY));
+	double target = std::atan2(x - m_circleX, y - m_circleY);
+	m_motor.setTargetPosition(target);
+	m_stepResponseGraph.SetMotorTargetPosition(target);
 }
 
 void Application::PaintCanvas()
@@ -155,6 +175,7 @@ void Application::PaintCanvas()
 
 void Application::PaintCanvas(HDC hdc)
 {
+	m_stepResponseGraph.DrawGraph(hdc, 200, 0, 440, 200);
 	DrawMotor(hdc);
 	DrawGraph(hdc);
 }
@@ -163,47 +184,40 @@ void Application::DrawMotor(HDC hdc)
 {
 	SelectObject(hdc, m_blueBrush);
 	SelectObject(hdc, m_bluePen);
-	Ellipse(hdc, m_circleX - m_circleR, m_circleY - m_circleR, m_circleX + m_circleR, m_circleY + m_circleR);
+	Ellipse(hdc, (int)(m_circleX - m_circleR), (int)(m_circleY - m_circleR), (int)(m_circleX + m_circleR), (int)(m_circleY + m_circleR));
 	SelectObject(hdc, m_greenPen);
-	MoveToEx(hdc, m_circleX, m_circleY, NULL);
-	LineTo(hdc, sin(m_motor.getTargetPosition()) * m_leverL + m_circleX, cos(m_motor.getTargetPosition()) * m_leverL + m_circleY);
+	MoveToEx(hdc, (int)(m_circleX), (int)(m_circleY), NULL);
+	LineTo(hdc, (int)(sin(m_motor.getTargetPosition()) * m_leverL + m_circleX), (int)(cos(m_motor.getTargetPosition()) * m_leverL + m_circleY));
 	SelectObject(hdc, m_redPen);
-	MoveToEx(hdc, m_circleX, m_circleY, NULL);
-	LineTo(hdc, sin(m_motor.getCurrentPosition()) * m_leverL + m_circleX, cos(m_motor.getCurrentPosition()) * m_leverL + m_circleY);
+	MoveToEx(hdc, (int)(m_circleX), (int)(m_circleY), NULL);
+	LineTo(hdc, (int)(sin(m_motor.getCurrentPosition()) * m_leverL + m_circleX), (int)(cos(m_motor.getCurrentPosition()) * m_leverL + m_circleY));
 }
 
 void Application::DrawGraph(HDC hdc)
 {
 	SelectObject(hdc, m_correctValuePen);
-	MoveToEx(hdc, 0, 340 - m_motor.getTargetPosition() * 32, NULL);
-	LineTo(hdc, 640, 340 - m_motor.getTargetPosition() * 32);
+	MoveToEx(hdc, 0, 340 - (int)(m_motor.getTargetPosition() * 32.0), NULL);
+	LineTo(hdc, 640, 340 - (int)(m_motor.getTargetPosition() * 32.0));
 
-	if (!m_graph.empty())
+	if (m_graph.Size())
 	{
 		SelectObject(hdc, m_graphPen);
-		MoveToEx(hdc, 0, 340 - m_graph[0] * 32, NULL);
-		double x = 0;
-		double step = m_maxGraphDataCount / 640.0;
-		for (int i = 1; i < m_graph.size(); i++)
+		MoveToEx(hdc, 0, 340 - (int)(m_graph[0] * 32.0), NULL);
+		double x = 0.0;
+		double step = (double)m_graph.Capacity() / 640.0;
+		for (size_t i = 1; i < m_graph.Size(); i++)
 		{
 			x += step;
-			LineTo(hdc, x, 340 - m_graph[i] * 32);
+			LineTo(hdc, (int)x, 340 - (int)(m_graph[i] * 32.0));
 		}
 	}
 	std::wstring errorStr = L"Error: " + std::to_wstring(m_motor.getError());
-	TextOut(hdc, 10, 180, errorStr.c_str(), errorStr.length());
+	TextOut(hdc, 10, 180, errorStr.c_str(), (int)errorStr.length());
 }
 
 void Application::StoreNewPosition(double newPosition)
 {
-	if (m_graph.size() < m_maxGraphDataCount)
-		m_graph.push_back(newPosition);
-	else
-	{
-		for (int i = 1; i < m_graph.size(); i++)
-			m_graph[i - 1] = m_graph[i];
-		m_graph[m_graph.size() - 1] = newPosition;
-	}
+	m_graph.PushBack(newPosition);
 }
 
 Application::Application() :
@@ -214,6 +228,8 @@ Application::Application() :
 	lbl_kd(NULL), tb_kd(NULL),
 	lbl_friction(NULL), tb_friction(NULL),
 	lbl_gravity(NULL), tb_gravity(NULL),
+	lbl_outputLimit(NULL), tb_outputLimit(NULL),
+	lbl_integralLimit(NULL), tb_integralLimit(NULL),
 	btn_set(NULL),
 	btn_restart(NULL),
 	m_backgroundBrush(CreateSolidBrush(RGB(50, 50, 50))),
@@ -229,7 +245,7 @@ Application::Application() :
 	m_leverL(75.0),
 	m_motor(),
 	m_graph(),
-	m_maxGraphDataCount(640) {}
+	m_stepResponseGraph(640) {}
 
 Application::~Application()
 {
@@ -254,6 +270,10 @@ Application::~Application()
 	DestroyWindow(tb_friction);
 	DestroyWindow(lbl_gravity);
 	DestroyWindow(tb_gravity);
+	DestroyWindow(lbl_outputLimit);
+	DestroyWindow(tb_outputLimit);
+	DestroyWindow(lbl_integralLimit);
+	DestroyWindow(tb_integralLimit);
 	DestroyWindow(btn_set);
 	DestroyWindow(btn_restart);
 }

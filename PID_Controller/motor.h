@@ -12,6 +12,8 @@ class Motor
 	double m_kd;
 	double m_friction;
 	double m_gravity;
+	double m_outputLimit;
+	double m_integralLimit;
 
 	double m_currentPosition;
 	double m_controlValue;
@@ -19,6 +21,8 @@ class Motor
 	ControllerType m_controller;
 
 private:
+	void LimitOutput();
+	void LimitIntegral();
 	void P();
 	void PI();
 	void PD();
@@ -29,7 +33,7 @@ private:
 public:
 	Motor();
 	void Restart();
-	void SetParams(const char* controller, double kp, double ki, double kd, double friction, double gravity);
+	void SetParams(const char* controller, double kp, double ki, double kd, double friction, double gravity, double outputLimit, double integralLimit);
 	void Update(double timeStep);
 	inline void setTargetPosition(double position) { m_targetPosition = position; }
 	inline double getError() { return m_lastError; }
